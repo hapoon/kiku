@@ -28,16 +28,17 @@ const (
 )
 
 // AkTime is the time for AKASHI.
-type AkTime time.Time
+type AkTime struct {
+	time.Time
+}
 
 // UnmarshalJSON is the function that extends unmarshalJSON.
 func (a *AkTime) UnmarshalJSON(data []byte) (err error) {
 	if string(data) == "null" {
 		return
 	}
-
 	t, err := time.Parse(`"`+ReturnDateFormat+`"`, string(data))
-	*a = AkTime(t)
+	*a = AkTime{t}
 	return
 }
 
@@ -193,10 +194,10 @@ func GetStamps(ctx context.Context, param GetStampParam) (response GetStampRespo
 
 type PostStampParam struct {
 	LoginCompanyCode string    // AKASHI企業ID
-	Token            string    // アクセストークン
-	Type             StampType // 打刻種別
-	StampedAt        *AkTime   // クライアントでの打刻日時
-	Timezone         string    // クライアントでのタイムゾーン
+	Token            string    `json:"token"`               // アクセストークン
+	Type             StampType `json:"type,omitempty"`      // 打刻種別
+	StampedAt        *AkTime   `json:"stampedAt,omitempty"` // クライアントでの打刻日時
+	Timezone         string    `json:"timezone,omitempty"`  // クライアントでのタイムゾーン
 }
 
 func (p PostStampParam) IsValid() (err error) {
@@ -252,7 +253,7 @@ func PostStamp(ctx context.Context, param PostStampParam) (response PostStampRes
 	}
 
 	cli := newClient()
-	res, err := cli.Get(ctx, endpoint)
+	res, err := cli.Post(ctx, endpoint, param)
 	switch {
 	case res.StatusCode != http.StatusOK:
 		err = fmt.Errorf("Status code=%d", res.StatusCode)
@@ -262,6 +263,7 @@ func PostStamp(ctx context.Context, param PostStampParam) (response PostStampRes
 	}
 
 	err = response.Decode(res.Body)
+	fmt.Printf("response: %+v\n", response)
 
 	return
 }
